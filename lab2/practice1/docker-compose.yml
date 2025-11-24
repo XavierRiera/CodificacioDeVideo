@@ -1,0 +1,23 @@
+# From: https://docs.docker.com/compose/gettingstarted/
+
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "80:80"
+    volumes: # From: https://docs.docker.com/reference/compose-file/volumes/
+      - practice1_shared:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SHARED_VOLUME=practice1_shared
+
+  ffmpeg:
+    image: jrottenberg/ffmpeg:4.4-alpine
+    command: ["sleep", "infinity"]
+    volumes:
+      - practice1_shared:/data
+
+volumes:
+  practice1_shared:

@@ -4,6 +4,8 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 import pywt
+import numpy as np
+from scipy.fftpack import dct, idct
 
 ###############################################################
 
@@ -43,34 +45,18 @@ def resize(input_path, iw, ih, output_path):                                    
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-def zigzag(img):                                                                            ########## chat
-    h, w = img.shape[:2]
-    zigzag_list = []
-
-    for s in range(h + w - 1):
-        if s % 2 == 0:
-            # even: go bottom→top
-            for y in range(min(s, h-1), max(-1, s-w), -1):
-                x = s - y
-                zigzag_list.append(img[y, x])
+def serpentine(array):
+    height, width = array.shape
+    dimensions = height*width
+    result = []
+    for y in range(height):
+        if y % 2 == 0:
+            for x in range(width):
+                result.append(array[y, x])
         else:
-            # odd: go top→bottom
-            for y in range(max(0, s-w+1), min(s+1, h)):
-                x = s - y
-                zigzag_list.append(img[y, x])
-
-    return zigzag_list
-
-
-def serpentine(input_path):
-
-    image_data = mpimg.imread(input_path)
-    h, w = image_data.size
-    
-    serpentine_data = []
-    for x in range(w):
-        for y in range(h):
-            serpentine_data.append(image_data[x, y])
+            for x in range(width-1, -1, -1):
+                result.append(array[y, x])
+    return result
 
 ###############################################################
 
@@ -105,8 +91,6 @@ def RLE(st):
 # From: https://stackoverflow.com/questions/13904851/use-pythons-scipy-dct-ii-to-do-2d-or-nd-dct?utm_source=chatgpt.com --> dct dynamic for more than 1D array
 # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.idct.html --> idct
 
-import numpy as np
-from scipy.fftpack import dct, idct
 class DCT:
     def encode (array):
         array = np.array(array, dtype=float)
@@ -125,10 +109,21 @@ class DCT:
 ###############################################################
 
 # EX 7
-# From: https://pywavelets.readthedocs.io/en/latest/
 
-def wavelet_transform_example(input_path):
-    # Load image
+# Encoder and decoder DWT inspired in previous exercise
+class encoderDWT:
+    def encodeDWT (array):
+        cA, cD = pywt.dwt2(array, 'bior1.3')
+        return cA, cD
+
+    def decodeDWT (cA, cD):
+        reconstructed = pywt.idwt(cA, cD, 'db2')
+
+        return reconstructed
+
+# Encoder from: https://pywavelets.readthedocs.io/en/latest/
+
+def DWT_encode_example(input_path):
     original = mpimg.imread(input_path)
     print(original)
 
@@ -148,6 +143,7 @@ def wavelet_transform_example(input_path):
     fig.tight_layout()
     plt.show()
 
+###############################################################
 
 # Example usage
 if __name__ == "__main__":
@@ -167,6 +163,19 @@ if __name__ == "__main__":
     #RLE(st)
 
     data = [1, 2, 3, 4]
-    print(DCT.encode(data))
+    #encoded = DCT.encode(data)
+    #print(encoded)
 
-    #wavelet_transform_example("ex1.jpg")
+    #decoded = DCT.decode(encoded)
+    #print(decoded)
+
+    cA, cD = encoderDWT.encodeDWT(data)
+    print(cA, cD)
+
+    reconstructed = encoderDWT.decodeDWT(cA, cD)
+    print(reconstructed)
+    
+    #a = np.arange(12).reshape(3, 4)
+    #print(a)
+    #b = serpentine(a)
+    #print(b)

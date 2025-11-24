@@ -7,7 +7,9 @@ import pywt
 import numpy as np
 from scipy.fftpack import dct, idct
 
+
 ###############################################################
+
 
 # EX 2
 
@@ -26,7 +28,9 @@ def yuv_to_rgb(Y, U, V):
     b = Y + 2.032 * U
     return r, g, b
 
+
 ###############################################################
+
 
 # EX 3
 
@@ -38,27 +42,39 @@ def resize(input_path, iw, ih, output_path):                                    
 
     subprocess.run(comando)
 
+
 ###############################################################
+
 
 # EX 4
 
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
+# From: https://medium.com/100-days-of-algorithms/day-63-zig-zag-51a41127f31
 
-def serpentine(array):
-    height, width = array.shape
-    dimensions = height*width
+# Donat una matriu quadrada i l'index k, retorna la posició (i, j) en la matriu corresponent a l'índex zig-zag k
+
+def zig_zag_index(k, n):
+    # upper side of interval
+    if k >= n * (n + 1) // 2:
+        i, j = zig_zag_index(n * n - 1 - k, n)
+        return n - 1 - i, n - 1 - j
+    # lower side of interval
+    i = int((np.sqrt(1 + 8 * k) - 1) / 2)
+    j = k - i * (i + 1) // 2
+    return (j, i - j) if i & 1 else (i - j, j)
+
+# A partir d'aquí, es pot implementar la funció serpentine utilitzant aquesta funció d'índex zig-zag per obtenir els elements en l'ordre correcte
+
+def serpentine(matrix):
+    n = matrix.shape[0] 
     result = []
-    for y in range(height):
-        if y % 2 == 0:
-            for x in range(width):
-                result.append(array[y, x])
-        else:
-            for x in range(width-1, -1, -1):
-                result.append(array[y, x])
+    for k in range(n * n):
+        i, j = zig_zag_index(k, n)
+        result.append(matrix[i, j])
     return result
 
+
 ###############################################################
+
 
 # EX 5
 
@@ -84,7 +100,9 @@ def RLE(st):
         print(st[i] + str(count), end="")
         i += 1
 
+
 ###############################################################
+
 
 # EX 6
 # From: https://www.tutorialspoint.com/scipy/scipy_dct_function.htm --> norm = 'ortho'
@@ -106,7 +124,9 @@ class DCT:
             result = idct(array, axis=line, norm = "ortho")
         return result
 
+
 ###############################################################
+
 
 # EX 7
 
@@ -143,7 +163,9 @@ def DWT_encode_example(input_path):
     fig.tight_layout()
     plt.show()
 
+
 ###############################################################
+
 
 # Example usage
 if __name__ == "__main__":
@@ -169,13 +191,17 @@ if __name__ == "__main__":
     #decoded = DCT.decode(encoded)
     #print(decoded)
 
-    cA, cD = encoderDWT.encodeDWT(data)
-    print(cA, cD)
+    #cA, cD = encoderDWT.encodeDWT(data)
+    #print(cA, cD)
 
-    reconstructed = encoderDWT.decodeDWT(cA, cD)
-    print(reconstructed)
+    #reconstructed = encoderDWT.decodeDWT(cA, cD)
+    #print(reconstructed)
     
-    #a = np.arange(12).reshape(3, 4)
-    #print(a)
-    #b = serpentine(a)
-    #print(b)
+    #matrix = np.array([
+    #[1, 2, 3, 4],
+    #[5, 6, 7, 8],
+    #[9, 10, 11, 12],
+    #[13, 14, 15, 16]])
+
+    #zig_zag_sequence = serpentine(matrix)
+    #print(zig_zag_sequence)

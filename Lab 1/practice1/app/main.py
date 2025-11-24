@@ -68,17 +68,22 @@ def resize(input_path: str, iw: int, ih: int, output_path: str):
 
 # EX 4 - Serpentine pattern
 
-def serpentine(array: np.ndarray) -> List:
-    """Convert 2D array to serpentine (zigzag) pattern"""
-    height, width = array.shape
+def zig_zag_index(k, n):
+    # upper side of interval
+    if k >= n * (n + 1) // 2:
+        i, j = zig_zag_index(n * n - 1 - k, n)
+        return n - 1 - i, n - 1 - j
+    # lower side of interval
+    i = int((np.sqrt(1 + 8 * k) - 1) / 2)
+    j = k - i * (i + 1) // 2
+    return (j, i - j) if i & 1 else (i - j, j)
+
+def serpentine(matrix):
+    n = matrix.shape[0] 
     result = []
-    for y in range(height):
-        if y % 2 == 0:
-            for x in range(width):
-                result.append(float(array[y, x]))
-        else:
-            for x in range(width-1, -1, -1):
-                result.append(float(array[y, x]))
+    for k in range(n * n):
+        i, j = zig_zag_index(k, n)
+        result.append(matrix[i, j])
     return result
 
 ###############################################################

@@ -86,7 +86,8 @@ def black_and_white_max_compression(input_path, output_path):
     comando = f"ffmpeg -i {input_path} -vf format=gray -q:v 31 {output_path}"
     subprocess.run(comando)
 
-
+# The resulting file is heavily compressed, we can see a noticeable loss of detail, strong artifacts and a very small file size.
+# The grayscale filter worked as expected, leaving a monochrome, high-contrast image.
 ###############################################################
 
 

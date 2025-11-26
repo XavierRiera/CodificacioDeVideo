@@ -1,0 +1,5 @@
+Sistemes de Codificació d'Àudio i Vídeo
+
+Xavier Riera 268446 - Aina Gutiérrez 266071
+
+https://github.com/XavierRiera/CodificacioDeVideo.git

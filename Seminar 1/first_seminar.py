@@ -14,6 +14,8 @@ from scipy.fftpack import dct, idct
 # EX 2
 
 # From: https://web.archive.org/web/20180423091842/http://www.equasys.de/colorconversion.html
+# We have decided that the two functions receives the three values independently. This allows more scalability for future uses.
+
 # Convert from RGB to YUV
 def rgb_to_yuv(r, g, b):
     y = 0.299 * r + 0.587 * g + 0.114 * b
@@ -49,8 +51,8 @@ def resize(input_path, iw, ih, output_path):                                    
 # EX 4
 
 # From: https://medium.com/100-days-of-algorithms/day-63-zig-zag-51a41127f31
-
-# Donat una matriu quadrada i l'index k, retorna la posició (i, j) en la matriu corresponent a l'índex zig-zag k
+# As for the second exercise we have decided that the function works with a matrix and reads the bytes from the matrix.
+# Given a square matrix and the index k, return the position (i, j) in the matrix corresponding to the zig-zag index k
 
 def zig_zag_index(k, n):
     # upper side of interval
@@ -62,8 +64,7 @@ def zig_zag_index(k, n):
     j = k - i * (i + 1) // 2
     return (j, i - j) if i & 1 else (i - j, j)
 
-# A partir d'aquí, es pot implementar la funció serpentine utilitzant aquesta funció d'índex zig-zag per obtenir els elements en l'ordre correcte
-
+# From here, the serpentine function can be implemented using this zig-zag index function to get the elements in the correct order.
 def serpentine(matrix):
     n = matrix.shape[0] 
     result = []
@@ -85,6 +86,12 @@ def black_and_white_max_compression(input_path, output_path):
     comando = f"ffmpeg -i {input_path} -vf format=gray -q:v 31 {output_path}"
     subprocess.run(comando)
 
+# The resulting file is heavily compressed, we can see a noticeable loss of detail, strong artifacts and a very small file size.
+# The grayscale filter worked as expected, leaving a monochrome, high-contrast image.
+###############################################################
+
+
+# EX 6
 
 # RLE from: https://www.geeksforgeeks.org/dsa/run-length-encoding/
 def RLE(st):
@@ -100,11 +107,10 @@ def RLE(st):
         print(st[i] + str(count), end="")
         i += 1
 
-
 ###############################################################
 
 
-# EX 6
+# EX 7
 # From: https://www.tutorialspoint.com/scipy/scipy_dct_function.htm --> norm = 'ortho'
 # From: https://stackoverflow.com/questions/13904851/use-pythons-scipy-dct-ii-to-do-2d-or-nd-dct?utm_source=chatgpt.com --> dct dynamic for more than 1D array
 # From: https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.idct.html --> idct
@@ -128,7 +134,7 @@ class DCT:
 ###############################################################
 
 
-# EX 7
+# EX 8
 
 # Encoder and decoder DWT inspired in previous exercise
 class encoderDWT:
@@ -138,11 +144,10 @@ class encoderDWT:
 
     def decodeDWT (cA, cD):
         reconstructed = pywt.idwt(cA, cD, 'db2')
-
         return reconstructed
 
 # Encoder from: https://pywavelets.readthedocs.io/en/latest/
-
+#As for the DCT we did a class that is only about DCT we have decided to implement the DWT encoder with an image
 def DWT_encode_example(input_path):
     original = mpimg.imread(input_path)
     print(original)
@@ -175,7 +180,7 @@ if __name__ == "__main__":
     #print(f"RGB({r}, {g}, {b}) to YUV({y:.2f}, {u:.2f}, {v:.2f})")
 
     #r2, g2, b2 = yuv_to_rgb(y, u, v)                                                        # Convert back YUV to RGB
-    #print(f"YUV({y:.2f}, {u:.2f}, {v:.2f}) back to RGB({r2:.2f}, {g2:.2f}, {b2:.2f})")      # Verify the conversion --> no és exactament es mateixos valors RGB per culpa d'arrodoniments
+    #print(f"YUV({y:.2f}, {u:.2f}, {v:.2f}) back to RGB({r2:.2f}, {g2:.2f}, {b2:.2f})")      # Verify the conversion --> They are not exactly the same RGB values because of rounding
 
     #resize("ex1.jpg", 100, 100, "output.jpg")
     #black_and_white_max_compression("ex1.jpg", "output_bw.jpg")

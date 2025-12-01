@@ -21,23 +21,27 @@ app = FastAPI()
 
 
 ###############################################################
-#https://creatomate.com/blog/how-to-change-the-resolution-of-a-video-using-ffmpeg                                               /////////////////////// CANVIAR POSAR COM ES ALTREs
-# EX 3 - Resize video with ffmpeg
+# EX 1 - convert
 
-def resize(input_path: str, iw: int, ih: int, output_path: str):
-    """Resize image using ffmpeg"""
-    # Use docker to run ffmpeg in a separate container via a named volume
-    vol = os.environ.get("SHARED_VOLUME", "practice1_shared")
-    # input and output are expected inside the shared volume at /work
-    in_name = os.path.basename(input_path)
-    out_name = os.path.basename(output_path)
-    cmd = [
-        "docker", "run", "--rm",
-        "-v", f"{vol}:/work",
-        "jrottenberg/ffmpeg:4.4-alpine",
-        "ffmpeg", "-i", f"/work/{in_name}", "-vf", f"scale={iw}:{ih}", f"/work/{out_name}"
-    ]
-    subprocess.run(cmd, capture_output=True)
+def convert(input_path: str, format: int, output_path: str):
+
+    # to VP9 From: https://trac.ffmpeg.org/wiki/Encode/VP9
+    if (format == 0):
+        cmd = ["ffmpeg", "-i", input_path, "-c:v", "libvpx-vp9", "-b:v", "2M", "-c:a", "libopus", output_path]
+
+    # to VP8 From: https://trac.ffmpeg.org/wiki/Encode/VP8
+    elif (format == 1):
+        cmd = ["ffmpeg", "-i", input_path, "-c:v", "libvpx", "-b:v", "1M", "-c:a", "libvorbis", output_path]
+
+    # to h265 From: https://stackoverflow.com/questions/58742765/convert-videos-from-264-to-265-hevc-with-ffmpeg
+    elif (format == 2):
+        cmd = ["ffmpeg", "-i", input_path, "-c:v", "libx265", "-vtag", "hvc1", output_path]
+
+    # to AV1 From: https://trac.ffmpeg.org/wiki/Encode/AV1 
+    elif (format == 3):
+        cmd = ["ffmpeg", "-i", input_path, "-c:v", "libaom-av1", "-crf", "30", output_path]
+    
+    return subprocess.run(cmd, capture_output=True)
 
 ###############################################################
 
@@ -172,6 +176,54 @@ def ffmpeg_version():
     """Get FFmpeg version"""
     result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
     return {"ffmpeg_version": result.stdout.split('\n')[0]}
+
+
+@app.post("/video/convert")
+async def api_convert(file: UploadFile = File(...), format: int = 0):
+    # format: 0=VP9, 1=VP8, 2=h265, 3=AV1
+    
+    suffix = os.path.splitext(file.filename)[1] or ".mp4"
+    td = tempfile.mkdtemp()
+    
+    in_path = os.path.join(td, "in" + suffix)
+    
+    # Set output extension based on format
+    if format == 0:
+        out_path = os.path.join(td, "output.webm")  # VP9 usually in webm
+    elif format == 1:
+        out_path = os.path.join(td, "output.webm")  # VP8 usually in webm
+    elif format == 2:
+        out_path = os.path.join(td, "output.mp4")   # h265 in mp4
+    elif format == 3:
+        out_path = os.path.join(td, "output.mp4")   # AV1 in mp4
+    else:
+        return {"error": "Invalid format"}
+    
+    content = await file.read()
+    with open(in_path, "wb") as f:
+        f.write(content)
+    
+    result = convert(in_path, format, out_path)
+    
+    if result.returncode != 0:
+        return {"error": result.stderr}
+    
+    # Return appropriate content type
+    if format == 0 or format == 1:
+        return FileResponse(out_path, media_type="video/webm", filename="converted.webm")
+    else:
+        return FileResponse(out_path, media_type="video/mp4", filename="converted.mp4")
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Image resize endpoint (uses ffmpeg)

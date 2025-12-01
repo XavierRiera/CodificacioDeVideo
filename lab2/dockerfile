@@ -1,0 +1,24 @@
+# From: https://fastapi.tiangolo.com/deployment/docker/?h=docker#containers-and-processes
+
+FROM python:3.11-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir fastapi uvicorn numpy scipy PyWavelets matplotlib pillow python-multipart
+
+COPY app ./app
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+
+
+# Comandos per que funcioni:
+
+# docker build -t practice1 .  
+# docker run -p 80:80 practice1
+# http://127.0.0.1/

@@ -21,12 +21,11 @@ app = FastAPI()
 
 
 ###############################################################
-# Command from https://creatomate.com/blog/how-to-change-the-resolution-of-a-video-using-ffmpeg                                               /////////////////////// CANVIAR POSAR COM ES ALTREs
+# Command from https://creatomate.com/blog/how-to-change-the-resolution-of-a-video-using-ffmpeg
 # EX 1 - Resize (same as changing the resolution) video with ffmpeg.
 # Reused from previous labs.
 
 def resize(input_path: str, iw: int, ih: int, output_path: str):
-    """Resize image using ffmpeg"""
     
     # Use docker to run ffmpeg in a separate container via a named volume
     vol = os.environ.get("SHARED_VOLUME", "practice1_shared")
@@ -34,46 +33,21 @@ def resize(input_path: str, iw: int, ih: int, output_path: str):
     # input and output are  inside the shared volume
     in_name = os.path.basename(input_path)
     out_name = os.path.basename(output_path)
-    cmd = [
-        "docker", "run", "--rm",
-        "-v", f"{vol}:/work",
-        "jrottenberg/ffmpeg:4.4-alpine",
-        "ffmpeg", "-i", f"/work/{in_name}", "-vf", f"scale={iw}:{ih}", f"/work/{out_name}"
-    ]
+    cmd = ["docker", "run", "--rm", "-v", f"{vol}:/work", "jrottenberg/ffmpeg:4.4-alpine", "ffmpeg", "-i", f"/work/{in_name}", "-vf", f"scale={iw}:{ih}", f"/work/{out_name}"]
     subprocess.run(cmd, capture_output=True)
-
-###############################################################
 
 ###############################################################
 # Command from https://trac.ffmpeg.org/wiki/Chroma%20Subsampling
 # EX 2 -chroma_subsambpling
-
 def chroma_subsampling(input_path: str, output_path: str):
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", input_path,
-        "-vf", "format=yuv422p",
-        "-c:v", "libx264",
-        output_path
-    ]
+    cmd = ["ffmpeg", "-y", "-i", input_path, "-vf", "format=yuv422p", "-c:v", "libx264", output_path]
     return subprocess.run(cmd, capture_output=True, text=True)
-
-
-###############################################################
 
 ###############################################################
 #Command from https://trac.ffmpeg.org/wiki/Chroma%20Subsampling
 # EX 3 - video info
-
 def video_info(input_path: str):
-    cmd = [
-        "ffprobe",
-        "-v", "quiet",
-        "-print_format", "json",
-        "-show_format",
-        "-show_streams",
-        input_path   
-    ]
+    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", input_path]
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout
 
@@ -145,7 +119,7 @@ def count(input_path: str):
 
 ##############################################################
 # EX 6 - macroblocks and motion vectors
-# Command from: https://trac.ffmpeg.org/wiki/Debug/MacroblocksAndMotionVectors?utm_source=chatgpt.com
+# Command from: https://trac.ffmpeg.org/wiki/Debug/MacroblocksAndMotionVectors
 def macroblocks_and_motion_vectors(input_path: str, output_path: str):
     cmd = ["ffmpeg", "-flags2", "+export_mvs", "-i", input_path, "-vf", "codecview=mv=pf+bf+bb", "-c:v", "libx264", output_path]
 
@@ -153,7 +127,7 @@ def macroblocks_and_motion_vectors(input_path: str, output_path: str):
 
 ##############################################################
 # EX 7 - YUV histogram
-# Command from: https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/video_data_visualization/histogram.html?utm_source=chatgpt.com 
+# Command from: https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/video_data_visualization/histogram.html
 
 def YUV_histogram(input_path: str, output_path: str):
     cmd = ["ffmpeg", "-i", input_path, "-vf", "histogram=display_mode=stack,scale=1280:720,setsar=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", output_path]
@@ -232,12 +206,9 @@ async def api_chroma_subsampling(file: UploadFile = File(...)):
 
     return FileResponse(out_path, media_type="video/mp4", filename="chroma_video.mp4")
 
+
 @app.post("/video/bbb-container")
 async def api_create_bbb_container(file: UploadFile = File(...)):
-    """
-    Upload Big Buck Bunny and create a 20-second MP4
-    with 3 additional audio tracks (AAC mono, MP3 stereo, AC3).
-    """
     suffix = os.path.splitext(file.filename)[1] or ".mp4"
     td = tempfile.mkdtemp()
 
@@ -272,6 +243,7 @@ async def api_count_tracks(file: UploadFile = File(...)):
     track_count = count(in_path)
     
     return {"tracks": track_count}
+
 
 @app.post("/video/macroblocks")
 async def api_macroblocks_motion(file: UploadFile = File(...)):

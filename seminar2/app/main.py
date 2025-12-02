@@ -21,14 +21,17 @@ app = FastAPI()
 
 
 ###############################################################
-#https://creatomate.com/blog/how-to-change-the-resolution-of-a-video-using-ffmpeg                                               /////////////////////// CANVIAR POSAR COM ES ALTREs
-# EX 3 - Resize video with ffmpeg
+# Command from https://creatomate.com/blog/how-to-change-the-resolution-of-a-video-using-ffmpeg                                               /////////////////////// CANVIAR POSAR COM ES ALTREs
+# EX 1 - Resize (same as changing the resolution) video with ffmpeg.
+# Reused from previous labs.
 
 def resize(input_path: str, iw: int, ih: int, output_path: str):
     """Resize image using ffmpeg"""
+    
     # Use docker to run ffmpeg in a separate container via a named volume
     vol = os.environ.get("SHARED_VOLUME", "practice1_shared")
-    # input and output are expected inside the shared volume at /work
+    
+    # input and output are  inside the shared volume
     in_name = os.path.basename(input_path)
     out_name = os.path.basename(output_path)
     cmd = [
@@ -42,7 +45,7 @@ def resize(input_path: str, iw: int, ih: int, output_path: str):
 ###############################################################
 
 ###############################################################
-#https://trac.ffmpeg.org/wiki/Chroma%20Subsampling
+# Command from https://trac.ffmpeg.org/wiki/Chroma%20Subsampling
 # EX 2 -chroma_subsambpling
 
 def chroma_subsampling(input_path: str, output_path: str):
@@ -59,7 +62,7 @@ def chroma_subsampling(input_path: str, output_path: str):
 ###############################################################
 
 ###############################################################
-#https://trac.ffmpeg.org/wiki/Chroma%20Subsampling
+#Command from https://trac.ffmpeg.org/wiki/Chroma%20Subsampling
 # EX 3 - video info
 
 def video_info(input_path: str):
@@ -101,7 +104,7 @@ def new_BBB_container(input_path: str, output_path: str):
     r = subprocess.run(cmd_aac, capture_output=True, text=True)
     
     # From: https://www.cincopa.com/learn/ffmpeg-for-audio-encoding-filtering-and-normalization
-    # WAV to MP3 stereo (96 kbps)
+    # WAV to MP3 stereo (lower bit rate, 96 kbps)
     cmd_mp3 = ["ffmpeg", "-i", wav, "-vn", "-ar", "44100", "-ac", "2", "-b:a", "192k", mp3_stereo]
     r = subprocess.run(cmd_mp3, capture_output=True, text=True)
 
@@ -110,7 +113,7 @@ def new_BBB_container(input_path: str, output_path: str):
     cmd_ac3 = ["ffmpeg", "-i", wav, "-c:a", "ac3", "-b:a", "192k", ac3_file]
     r = subprocess.run(cmd_ac3, capture_output=True, text=True)
 
-    # 7) Package into final MP4: video from clip + three AAC audio tracks
+    # Final result: video of 20 seconds + one AAC mono track + one mp3 stereo with lower bitrate audio tracks + one AC3 track 
     cmd_package = [
         "ffmpeg", "-y",
         "-i", twenty_seconds,
@@ -129,21 +132,20 @@ def new_BBB_container(input_path: str, output_path: str):
         output_path
     ]
     r = subprocess.run(cmd_package, capture_output=True, text=True)
-    # also keep produced audio files next to final mp4 for inspection if caller wants them
     return r
 
 ###############################################################
 # EX 5 - count tracks
-# From: https://dev.to/enter?state=new-user&bb=239338
+# Idea extracted from: https://dev.to/enter?state=new-user&bb=239338
 def count(input_path: str):
     with open(input_path, 'rb') as f:
         data = f.read()
-        # Count how many times 'trak' appears
-        return data.count(b'trak')      # literal conta quantes vegades apareix 'trak' al fitxer
+        # Count how many times 'trak' appears in the metadata
+        return data.count(b'trak')     
 
 ##############################################################
 # EX 6 - macroblocks and motion vectors
-# From: https://trac.ffmpeg.org/wiki/Debug/MacroblocksAndMotionVectors?utm_source=chatgpt.com
+# Command from: https://trac.ffmpeg.org/wiki/Debug/MacroblocksAndMotionVectors?utm_source=chatgpt.com
 def macroblocks_and_motion_vectors(input_path: str, output_path: str):
     cmd = ["ffmpeg", "-flags2", "+export_mvs", "-i", input_path, "-vf", "codecview=mv=pf+bf+bb", "-c:v", "libx264", output_path]
 
@@ -151,7 +153,7 @@ def macroblocks_and_motion_vectors(input_path: str, output_path: str):
 
 ##############################################################
 # EX 7 - YUV histogram
-# From: https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/video_data_visualization/histogram.html?utm_source=chatgpt.com 
+# Command from: https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/video_data_visualization/histogram.html?utm_source=chatgpt.com 
 
 def YUV_histogram(input_path: str, output_path: str):
     cmd = ["ffmpeg", "-i", input_path, "-vf", "histogram=display_mode=stack,scale=1280:720,setsar=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", output_path]
@@ -169,7 +171,7 @@ def root():
 # FFmpeg endpoint
 @app.get("/ffmpeg/version")
 def ffmpeg_version():
-    """Get FFmpeg version"""
+    # Get FFmpeg version. This way we make sure ffmpeg is running correctly (reused from previous exercises)
     result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
     return {"ffmpeg_version": result.stdout.split('\n')[0]}
 
@@ -309,20 +311,3 @@ async def api_yuv_histogram(file: UploadFile = File(...)):
         return {"error": result.stderr}
     
     return FileResponse(out_path, media_type="video/mp4", filename="yuv_histogram.mp4")
-
-
-
-# Help endpoint listing important routes
-@app.get("/help")
-def help_routes():
-    return {
-        "routes": [
-            {"path": "/", "method": "GET", "desc": "Root message"},
-            {"path": "/ffmpeg/version", "method": "GET", "desc": "FFmpeg version"},
-            {"path": "/color/rgb-to-yuv", "method": "POST", "desc": "JSON {r,g,b} -> YUV"},
-            {"path": "/encoding/rle", "method": "POST", "desc": "JSON {string: '...'} -> RLE"},
-            {"path": "/image/resize", "method": "POST", "desc": "form file + width + height -> resized image"},
-            {"path": "/image/blackwhite", "method": "POST", "desc": "form file -> black & white compressed image"},
-            {"path": "/image/dwt", "method": "POST", "desc": "form file -> base64 PNGs of LL,LH,HL,HH"}
-        ]
-    }

@@ -14,11 +14,13 @@ COPY app ./app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "app.merge_main:app", "--host", "0.0.0.0", "--port", "80"]     
+
+# Canviar CMD a app.main:app per provar sa gui de només es lab 2 sense chat
 
 
 # Comandos per que funcioni:
 
 # docker build -t practice1 .  
 # docker run -p 80:80 practice1
-# http://127.0.0.1/docs
+# http://127.0.0.1/gui

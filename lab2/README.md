@@ -1,15 +1,15 @@
 Our first approach to building the website was done entirely manually, without using any AI tools or CSS styling. Despite the simplicity, the website was fully functional.
 
-<img width="1381" height="1403" alt="image" src="https://github.com/user-attachments/assets/a5bfcc6d-63d7-49a7-814a-74df17307e6f" />
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/a5bfcc6d-63d7-49a7-814a-74df17307e6f" />
 
 Next, we leveraged ChatGPT to implement a full suite of unit tests for the website. In this version, CSS was not separated; instead, it was included directly inside the HTML file.
 
-<img width="1323" height="1398" alt="image" src="https://github.com/user-attachments/assets/7f2cc0d3-0760-4c0b-8889-f05fff3024be" />
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/7f2cc0d3-0760-4c0b-8889-f05fff3024be" />
 
 Finally, we used Claude to create a more complex design by implementing a separate CSS file (style.css). This approach enhanced the visual presentation and structure of the website.
 
-<img width="2519" height="1210" alt="image" src="https://github.com/user-attachments/assets/3a166eac-fe0d-48ca-a898-417024ecfd06" />
-<img width="2542" height="533" alt="image" src="https://github.com/user-attachments/assets/dbccf684-6532-40b0-9eb5-ef33152b7648" />
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/3a166eac-fe0d-48ca-a898-417024ecfd06" />
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/dbccf684-6532-40b0-9eb5-ef33152b7648" />
 
 Despite the improvements, some functionalities did not work as expected:
 - Displaying Information: When using the "Read Info" function, the displayed information appeared incorrectly formatted.

@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
 
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(title="Video Processing API", version="2.0")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 ###############################################################
 # UTILITIES

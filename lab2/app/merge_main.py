@@ -1,319 +1,256 @@
-# MERGE DES LAB2 I SEMI2 FET AMB ES CHAT PER PODER FER TOT EN UN SOL FITXER I QUE FUNCIONI TOT
+# LAB 2 and SEMI 2 done with Claude Sonnet 4.2 to reduce lines of the code and have less redundancy
 
-from fastapi import FastAPI, UploadFile, File, Response
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 import subprocess
-import numpy as np
-import pywt
-from scipy.fftpack import dct, idct
 import tempfile
 import os
-from typing import List, Tuple
-import matplotlib.image as mpimg
-from PIL import Image
-from io import BytesIO
-import base64
+from pathlib import Path
+from typing import Optional
+from contextlib import contextmanager
 
-app = FastAPI()
+app = FastAPI(title="Video Processing API", version="2.0")
 
 ###############################################################
-# LAB 1 – FUNCTIONS: VIDEO RESIZE
-def resize(input_path: str, iw: int, ih: int, output_path: str):
-    vol = os.environ.get("SHARED_VOLUME", "practice1_shared")
-    in_name = os.path.basename(input_path)
-    out_name = os.path.basename(output_path)
-    cmd = [
-        "docker", "run", "--rm",
-        "-v", f"{vol}:/work",
-        "jrottenberg/ffmpeg:4.4-alpine",
-        "ffmpeg", "-i", f"/work/{in_name}",
-        "-vf", f"scale={iw}:{ih}",
-        f"/work/{out_name}"
-    ]
-    subprocess.run(cmd, capture_output=True)
-
-
+# UTILITIES
 ###############################################################
-# LAB 1 – FUNCTIONS: CHROMA SUBSAMPLING
-def chroma_subsampling(input_path: str, output_path: str):
-    cmd = [
-        "ffmpeg", "-y", "-i", input_path,
-        "-vf", "format=yuv422p",
-        "-c:v", "libx264",
-        output_path
-    ]
-    return subprocess.run(cmd, capture_output=True, text=True)
+
+@contextmanager
+def temp_workspace():
+    """Context manager for temporary directories"""
+    td = tempfile.mkdtemp()
+    try:
+        yield Path(td)
+    finally:
+        pass  # Cleanup handled by system
 
 
-###############################################################
-# LAB 1 – FUNCTIONS: VIDEO INFO
-def video_info(input_path: str):
-    cmd = [
-        "ffprobe", "-v", "quiet",
-        "-print_format", "json",
-        "-show_format", "-show_streams",
-        input_path
-    ]
+def run_ffmpeg(cmd: list, check: bool = True) -> subprocess.CompletedProcess:
+    """Unified FFmpeg command runner with error handling"""
     result = subprocess.run(cmd, capture_output=True, text=True)
-    return result.stdout
+    if check and result.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"FFmpeg error: {result.stderr}")
+    return result
+
+
+async def save_upload(file: UploadFile, path: Path) -> Path:
+    """Save uploaded file to path"""
+    full_path = path / file.filename
+    content = await file.read()
+    full_path.write_bytes(content)
+    return full_path
 
 
 ###############################################################
-# LAB 1 – FUNCTIONS: NEW BBB CONTAINER
-def new_BBB_container(input_path: str, output_path: str):
-    td = tempfile.mkdtemp()
-    twenty_seconds = os.path.join(td, "clip_20s.mp4")
-    wav = os.path.join(td, "audio.wav")
-    aac = os.path.join(td, "audio_aac.m4a")
-    mp3 = os.path.join(td, "audio_mp3.mp3")
-    ac3 = os.path.join(td, "audio.ac3")
+# CORE VIDEO FUNCTIONS
+###############################################################
 
-    subprocess.run(["ffmpeg", "-i", input_path, "-ss", "00:00", "-to", "00:20", twenty_seconds])
-    subprocess.run(["ffmpeg", "-y", "-i", twenty_seconds, "-q:a", "0", "-map", "a", wav])
-    subprocess.run(["ffmpeg", "-i", wav, "-c:a", "aac", "-b:a", "128k", aac])
-    subprocess.run(["ffmpeg", "-i", wav, "-ac", "2", "-b:a", "192k", mp3])
-    subprocess.run(["ffmpeg", "-i", wav, "-c:a", "ac3", "-b:a", "192k", ac3])
+def resize_video(input_path: Path, width: int, height: int, output_path: Path):
+    """Resize video using FFmpeg"""
+    cmd = ["ffmpeg", "-y", "-i", str(input_path), 
+           "-vf", f"scale={width}:{height}", str(output_path)]
+    run_ffmpeg(cmd)
 
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", twenty_seconds,
-        "-i", aac, "-i", mp3, "-i", ac3,
-        "-map", "0:v:0",
-        "-map", "1:a:0",
-        "-map", "2:a:0",
-        "-map", "3:a:0",
-        "-c:v", "copy",
-        "-c:a", "aac",
-        output_path
-    ]
-    return subprocess.run(cmd, capture_output=True, text=True)
+
+def chroma_subsampling(input_path: Path, output_path: Path):
+    """Apply chroma subsampling"""
+    cmd = ["ffmpeg", "-y", "-i", str(input_path),
+           "-vf", "format=yuv422p", "-c:v", "libx264", str(output_path)]
+    run_ffmpeg(cmd)
+
+
+def get_video_info(input_path: Path) -> str:
+    """Get video metadata using ffprobe"""
+    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json",
+           "-show_format", "-show_streams", str(input_path)]
+    return run_ffmpeg(cmd).stdout
+
+
+def create_bbb_container(input_path: Path, output_path: Path):
+    """Create BBB container with multiple audio tracks"""
+    with temp_workspace() as td:
+        clip = td / "clip_20s.mp4"
+        wav = td / "audio.wav"
+        
+        # Extract 20 second clip and audio
+        run_ffmpeg(["ffmpeg", "-i", str(input_path), "-ss", "00:00", "-to", "00:20", str(clip)])
+        run_ffmpeg(["ffmpeg", "-y", "-i", str(clip), "-q:a", "0", "-map", "a", str(wav)])
+        
+        # Encode to different formats
+        audio_tracks = {
+            "aac": (td / "audio.aac", ["-c:a", "aac", "-b:a", "128k"]),
+            "mp3": (td / "audio.mp3", ["-ac", "2", "-b:a", "192k"]),
+            "ac3": (td / "audio.ac3", ["-c:a", "ac3", "-b:a", "192k"])
+        }
+        
+        for path, codec_opts in audio_tracks.values():
+            run_ffmpeg(["ffmpeg", "-i", str(wav)] + codec_opts + [str(path)])
+        
+        # Multiplex all tracks
+        cmd = ["ffmpeg", "-y", "-i", str(clip)]
+        for path, _ in audio_tracks.values():
+            cmd.extend(["-i", str(path)])
+        cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-map", "2:a:0", "-map", "3:a:0",
+                   "-c:v", "copy", "-c:a", "copy", str(output_path)])
+        run_ffmpeg(cmd)
+
+
+def count_tracks(input_path: Path) -> int:
+    """Count MP4 tracks"""
+    return input_path.read_bytes().count(b"trak")
+
+
+def add_macroblocks_visualization(input_path: Path, output_path: Path):
+    """Visualize macroblocks and motion vectors"""
+    cmd = ["ffmpeg", "-flags2", "+export_mvs", "-i", str(input_path),
+           "-vf", "codecview=mv=pf+bf+bb", "-c:v", "libx264", str(output_path)]
+    run_ffmpeg(cmd)
+
+
+def create_yuv_histogram(input_path: Path, output_path: Path):
+    """Generate YUV histogram visualization"""
+    cmd = ["ffmpeg", "-i", str(input_path),
+           "-vf", "histogram=display_mode=stack,scale=1280:720,setsar=1",
+           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(output_path)]
+    run_ffmpeg(cmd)
 
 
 ###############################################################
-# LAB 1 – FUNCTIONS: COUNT TRACKS
-def count_tracks(input_path: str):
-    with open(input_path, 'rb') as f:
-        return f.read().count(b"trak")
-
-
+# CODEC CONVERSION
 ###############################################################
-# LAB 1 – MACROBLOCKS & MOTION VECTORS
-def macroblocks_and_motion_vectors(input_path: str, output_path: str):
-    cmd = [
-        "ffmpeg", "-flags2", "+export_mvs",
-        "-i", input_path,
-        "-vf", "codecview=mv=pf+bf+bb",
-        "-c:v", "libx264",
-        output_path
-    ]
-    return subprocess.run(cmd, capture_output=True, text=True)
+
+CODEC_CONFIGS = {
+    0: {"ext": "webm", "cmd": ["-c:v", "libvpx-vp9", "-b:v", "2M", "-c:a", "libopus"]},
+    1: {"ext": "webm", "cmd": ["-c:v", "libvpx", "-b:v", "1M", "-c:a", "libvorbis"]},
+    2: {"ext": "mp4", "cmd": ["-c:v", "libx265", "-vtag", "hvc1", "-c:a", "aac"]},
+    3: {"ext": "mp4", "cmd": ["-c:v", "libaom-av1", "-crf", "30", "-c:a", "aac"]}
+}
 
 
-###############################################################
-# LAB 1 – YUV HISTOGRAM
-def YUV_histogram(input_path: str, output_path: str):
-    cmd = [
-        "ffmpeg", "-i", input_path,
-        "-vf", "histogram=display_mode=stack,scale=1280:720,setsar=1",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-an", output_path
-    ]
-    return subprocess.run(cmd, capture_output=True, text=True)
+def convert_codec(input_path: Path, format_id: int, output_path: Path):
+    """Convert video to specified codec"""
+    with temp_workspace() as td:
+        clip = td / "clip20.mp4"
+        run_ffmpeg(["ffmpeg", "-i", str(input_path), "-ss", "00:00", "-to", "00:20", str(clip)])
+        
+        config = CODEC_CONFIGS.get(format_id)
+        if not config:
+            raise HTTPException(status_code=400, detail="Invalid format")
+        
+        cmd = ["ffmpeg", "-y", "-i", str(clip)] + config["cmd"] + [str(output_path)]
+        run_ffmpeg(cmd)
 
 
-###############################################################
-# LAB 2 – CONVERT TO VP9 / VP8 / H265 / AV1
-def convert(input_path: str, format: int, output_path: str):
-    td = tempfile.mkdtemp()
-    clip20 = os.path.join(td, "clip20.mp4")
-    subprocess.run(["ffmpeg", "-i", input_path, "-ss", "00:00", "-to", "00:20", clip20])
-
-    if format == 0:
-        cmd = ["ffmpeg", "-y", "-i", clip20, "-c:v", "libvpx-vp9", "-b:v", "2M", "-c:a", "libopus", output_path]
-    elif format == 1:
-        cmd = ["ffmpeg", "-y", "-i", clip20, "-c:v", "libvpx", "-b:v", "1M", "-c:a", "libvorbis", output_path]
-    elif format == 2:
-        cmd = ["ffmpeg", "-y", "-i", clip20, "-c:v", "libx265", "-vtag", "hvc1", "-c:a", "aac", output_path]
-    elif format == 3:
-        cmd = ["ffmpeg", "-y", "-i", clip20, "-c:v", "libaom-av1", "-crf", "30", "-c:a", "aac", output_path]
-
-    return subprocess.run(cmd, capture_output=True)
-
-
-###############################################################
-# LAB 2 – ENCODING LADDER
-def encoding_ladder(input_path: str, output_dir: str):
-    ladder = [
+def create_encoding_ladder(input_path: Path, output_dir: Path):
+    """Generate multi-resolution encoding ladder"""
+    ladder_specs = [
         ("360p_vp9.webm", 640, 360, 0),
-        ("540p_vp8.mp4", 960, 540, 1),
+        ("540p_vp8.webm", 960, 540, 1),
         ("720p_h265.mp4", 1280, 720, 2),
         ("1080p_av1.mp4", 1920, 1080, 3)
     ]
-
-    for filename, w, h, codec in ladder:
-        scaled_temp = os.path.join(output_dir, f"scaled_{w}x{h}.mp4")
-        subprocess.run(["ffmpeg", "-y", "-i", input_path, "-vf", f"scale={w}:{h}", scaled_temp])
-        out_path = os.path.join(output_dir, filename)
-        convert(scaled_temp, codec, out_path)
+    
+    for filename, width, height, codec in ladder_specs:
+        scaled = output_dir / f"scaled_{width}x{height}.mp4"
+        resize_video(input_path, width, height, scaled)
+        convert_codec(scaled, codec, output_dir / filename)
 
 
 ###############################################################
 # API ENDPOINTS
+###############################################################
+
 @app.get("/")
 def root():
-    return {"message": "API running"}
+    return {"message": "Video Processing API", "version": "2.0"}
 
 
 @app.get("/ffmpeg/version")
 def ffmpeg_version():
-    r = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
-    return {"version": r.stdout.split("\n")[0]}
+    result = run_ffmpeg(["ffmpeg", "-version"], check=False)
+    return {"version": result.stdout.split("\n")[0]}
 
-###############################################################
-# -------- LAB 1 ENDPOINTS --------
 
-@app.post("/video/resize")
+@app.post("/video/resize", response_class=FileResponse)
 async def api_resize(file: UploadFile = File(...), width: int = 640, height: int = 360):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-    out_path = os.path.join(td, "resized.mp4")
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    result = subprocess.run(["ffmpeg", "-y", "-i", in_path, "-vf", f"scale={width}:{height}", out_path])
-
-    if result.returncode != 0:
-        return {"error": "FFmpeg failed"}
-
-    return FileResponse(out_path, media_type="video/mp4")
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        output_path = td / "resized.mp4"
+        resize_video(input_path, width, height, output_path)
+        return FileResponse(output_path, media_type="video/mp4")
 
 
-@app.post("/video/chroma")
+@app.post("/video/chroma", response_class=FileResponse)
 async def api_chroma(file: UploadFile = File(...)):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-    out_path = os.path.join(td, "chroma.mp4")
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    r = chroma_subsampling(in_path, out_path)
-    if r.returncode != 0:
-        return {"error": r.stderr}
-
-    return FileResponse(out_path, media_type="video/mp4")
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        output_path = td / "chroma.mp4"
+        chroma_subsampling(input_path, output_path)
+        return FileResponse(output_path, media_type="video/mp4")
 
 
-@app.post("/video/info")
+@app.post("/video/info", response_class=JSONResponse)
 async def api_info(file: UploadFile = File(...)):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    return Response(content=video_info(in_path), media_type="application/json")
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        return JSONResponse(content=get_video_info(input_path), media_type="application/json")
 
 
-@app.post("/video/bbb-container")
+@app.post("/video/bbb-container", response_class=FileResponse)
 async def api_bbb(file: UploadFile = File(...)):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-    out_path = os.path.join(td, "bbb_final.mp4")
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    r = new_BBB_container(in_path, out_path)
-    if r.returncode != 0:
-        return {"error": r.stderr}
-
-    return FileResponse(out_path, media_type="video/mp4")
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        output_path = td / "bbb_final.mp4"
+        create_bbb_container(input_path, output_path)
+        return FileResponse(output_path, media_type="video/mp4")
 
 
 @app.post("/video/tracks")
 async def api_tracks(file: UploadFile = File(...)):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    return {"tracks": count_tracks(in_path)}
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        return {"tracks": count_tracks(input_path)}
 
 
-@app.post("/video/macroblocks")
-async def api_macro(file: UploadFile = File(...)):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-    out_path = os.path.join(td, "macroblocks.mp4")
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    r = macroblocks_and_motion_vectors(in_path, out_path)
-    if r.returncode != 0:
-        return {"error": r.stderr}
-
-    return FileResponse(out_path, media_type="video/mp4")
+@app.post("/video/macroblocks", response_class=FileResponse)
+async def api_macroblocks(file: UploadFile = File(...)):
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        output_path = td / "macroblocks.mp4"
+        add_macroblocks_visualization(input_path, output_path)
+        return FileResponse(output_path, media_type="video/mp4")
 
 
-@app.post("/video/yuv-histogram")
-async def api_hist(file: UploadFile = File(...)):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-    out_path = os.path.join(td, "hist.mp4")
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    r = YUV_histogram(in_path, out_path)
-    if r.returncode != 0:
-        return {"error": r.stderr}
-
-    return FileResponse(out_path, media_type="video/mp4")
+@app.post("/video/yuv-histogram", response_class=FileResponse)
+async def api_histogram(file: UploadFile = File(...)):
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        output_path = td / "histogram.mp4"
+        create_yuv_histogram(input_path, output_path)
+        return FileResponse(output_path, media_type="video/mp4")
 
 
-###############################################################
-# -------- LAB 2 ENDPOINTS --------
-
-@app.post("/video/convert")
+@app.post("/video/convert", response_class=FileResponse)
 async def api_convert(file: UploadFile = File(...), format: int = 0):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-
-    if format in [0, 1]:
-        out_path = os.path.join(td, "output.webm")
-    else:
-        out_path = os.path.join(td, "output.mp4")
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    r = convert(in_path, format, out_path)
-    if r.returncode != 0:
-        return {"error": r.stderr}
-
-    return FileResponse(out_path)
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        ext = CODEC_CONFIGS.get(format, {}).get("ext", "mp4")
+        output_path = td / f"output.{ext}"
+        convert_codec(input_path, format, output_path)
+        return FileResponse(output_path)
 
 
 @app.post("/video/encoding-ladder")
 async def api_ladder(file: UploadFile = File(...)):
-    td = tempfile.mkdtemp()
-    in_path = os.path.join(td, file.filename)
-
-    with open(in_path, "wb") as f:
-        f.write(await file.read())
-
-    encoding_ladder(in_path, td)
-
-    return {"message": "ladder completed", "folder": td}
+    with temp_workspace() as td:
+        input_path = await save_upload(file, td)
+        create_encoding_ladder(input_path, td)
+        return {"message": "Encoding ladder completed", "folder": str(td)}
 
 
-###############################################################
-# GUI
-@app.get("/gui")
+@app.get("/gui", response_class=HTMLResponse)
 def gui():
-    with open("app/gui_bona.html") as f:
-        return HTMLResponse(f.read())
+    gui_path = Path("app/gui_bona.html")
+    if gui_path.exists():
+        return HTMLResponse(gui_path.read_text())
+    return HTMLResponse("<h1>GUI not found</h1>", status_code=404)

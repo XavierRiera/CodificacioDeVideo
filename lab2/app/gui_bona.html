@@ -1,170 +1,219 @@
-<!-- ------------------------ MERGE DE LAB2 I SEMI2 FET AMB ES CHAT PER QUE QUEDI MONO ---------------------------- -->
-
+<!-- ------------------------ MERGE DE LAB2 I SEMI2 FET AMB ES CHAT ---------------------------- -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Video Processing GUI</title>
-    <style>
-        body {
-            font-family: Arial;
-            margin: 40px;
-            background: #f6f6f6;
-        }
-        h1 {
-            background: #222;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-        }
-        h2 {
-            background: #444;
-            color: white;
-            padding: 10px;
-            border-radius: 6px;
-        }
-        .box {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            box-shadow: 0px 0px 8px #ccc;
-        }
-        button {
-            padding: 10px 20px;
-            background: #0066ff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #004acc;
-        }
-        input, select {
-            padding: 5px;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Processing Studio</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🎬 Video Processing Studio</h1>
+            </div>
+        </header>
 
-<h1>🎬 Unified Video Processing GUI</h1>
+        <div class="grid">
+            <!-- Convert -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🔄</span>
+                    <h2>Convert Format</h2>
+                </div>
+                <p class="card-description">Convert your video to VP8, VP9, H265, or AV1 codecs</p>
+                <form action="/video/convert" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-<!-- ------------------------ LAB 2: CONVERT ---------------------------- -->
-<div class="box">
-<h2>1️⃣ Convert to VP8 / VP9 / H265 / AV1</h2>
+                    <div class="form-group">
+                        <label>Output Format</label>
+                        <select name="format">
+                            <option value="0">VP9</option>
+                            <option value="1">VP8</option>
+                            <option value="2">H.265 (HEVC)</option>
+                            <option value="3">AV1</option>
+                        </select>
+                    </div>
 
-<form action="/video/convert" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required> <br><br>
+                    <button type="submit" class="btn-primary">Convert Video</button>
+                </form>
+            </div>
 
-    <label>Select format:</label>
-    <select name="format">
-        <option value="0">VP9</option>
-        <option value="1">VP8</option>
-        <option value="2">H265</option>
-        <option value="3">AV1</option>
-    </select>
-    <br><br>
+            <!-- Encoding Ladder -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📊</span>
+                    <h2>Encoding Ladder</h2>
+                </div>
+                <p class="card-description">Generate multiple quality versions for adaptive streaming</p>
+                <form action="/video/encoding-ladder" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-    <button type="submit">Convert</button>
-</form>
-</div>
+                    <button type="submit" class="btn-primary">Generate Ladder</button>
+                </form>
+            </div>
 
-<!-- ------------------------ LAB 2: Encoding Ladder ---------------------------- -->
-<div class="box">
-<h2>2️⃣ Encoding Ladder</h2>
+            <!-- Resize -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📐</span>
+                    <h2>Resize Video</h2>
+                </div>
+                <p class="card-description">Change video resolution to custom dimensions</p>
+                <form action="/video/resize" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-<form action="/video/encoding-ladder" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required> <br><br>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Width (px)</label>
+                            <input type="number" name="width" value="640" min="1">
+                        </div>
 
-    <button type="submit">Run Ladder</button>
-</form>
-</div>
+                        <div class="form-group">
+                            <label>Height (px)</label>
+                            <input type="number" name="height" value="360" min="1">
+                        </div>
+                    </div>
 
-<!-- ------------------------ LAB 1: Resize ---------------------------- -->
-<div class="box">
-<h2>3️⃣ Resize Video</h2>
+                    <button type="submit" class="btn-primary">Resize Video</button>
+                </form>
+            </div>
 
-<form action="/video/resize" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required> <br><br>
+            <!-- Video Info -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">ℹ️</span>
+                    <h2>Video Information</h2>
+                </div>
+                <p class="card-description">Extract detailed metadata using FFprobe</p>
+                <form action="/video/info" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-    <label>Width:</label>
-    <input type="number" name="width" value="640"> <br><br>
+                    <button type="submit" class="btn-primary">Get Info</button>
+                </form>
+            </div>
 
-    <label>Height:</label>
-    <input type="number" name="height" value="360"> <br><br>
+            <!-- Chroma Subsampling -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🎨</span>
+                    <h2>Chroma Subsampling</h2>
+                </div>
+                <p class="card-description">Apply YUV422 chroma subsampling</p>
+                <form action="/video/chroma" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-    <button type="submit">Resize</button>
-</form>
-</div>
+                    <button type="submit" class="btn-primary">Apply Subsampling</button>
+                </form>
+            </div>
 
-<!-- ------------------------ LAB 1: Video Info ---------------------------- -->
-<div class="box">
-<h2>4️⃣ Video Info (FFprobe)</h2>
+            <!-- BBB Container -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📦</span>
+                    <h2>BBB Container</h2>
+                </div>
+                <p class="card-description">Generate 20s clip with 3 audio tracks</p>
+                <form action="/video/bbb-container" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-<form action="/video/info" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required><br><br>
+                    <button type="submit" class="btn-primary">Create Container</button>
+                </form>
+            </div>
 
-    <button type="submit">Get Info</button>
-</form>
-</div>
+            <!-- Count Tracks -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🔢</span>
+                    <h2>Track Counter</h2>
+                </div>
+                <p class="card-description">Count the number of video tracks</p>
+                <form action="/video/tracks" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-<!-- ------------------------ LAB 1: Chroma Subsampling ---------------------------- -->
-<div class="box">
-<h2>5️⃣ Chroma Subsampling (YUV422)</h2>
+                    <button type="submit" class="btn-primary">Count Tracks</button>
+                </form>
+            </div>
 
-<form action="/video/chroma" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required><br><br>
+            <!-- Macroblocks -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">🧩</span>
+                    <h2>Macroblocks & Vectors</h2>
+                </div>
+                <p class="card-description">Visualize macroblocks and motion vectors</p>
+                <form action="/video/macroblocks" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-    <button type="submit">Apply Chroma Subsampling</button>
-</form>
-</div>
+                    <button type="submit" class="btn-primary">Show Macroblocks</button>
+                </form>
+            </div>
 
-<!-- ------------------------ LAB 1: New BBB Container ---------------------------- -->
-<div class="box">
-<h2>6️⃣ Generate BBB Container (20s + 3 Audio Tracks)</h2>
+            <!-- YUV Histogram -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="icon">📈</span>
+                    <h2>YUV Histogram</h2>
+                </div>
+                <p class="card-description">Generate color space histogram analysis</p>
+                <form action="/video/yuv-histogram" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label class="file-input-wrapper">
+                            <input type="file" name="file" required>
+                            <span class="file-input-button">Choose File</span>
+                        </label>
+                    </div>
 
-<form action="/video/bbb-container" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required><br><br>
+                    <button type="submit" class="btn-primary">Generate Histogram</button>
+                </form>
+            </div>
+        </div>
 
-    <button type="submit">Create BBB Container</button>
-</form>
-</div>
-
-<!-- ------------------------ LAB 1: Count Tracks ---------------------------- -->
-<div class="box">
-<h2>7️⃣ Count Video Tracks</h2>
-
-<form action="/video/tracks" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required><br><br>
-
-    <button type="submit">Count Tracks</button>
-</form>
-</div>
-
-<!-- ------------------------ LAB 1: Macroblocks ---------------------------- -->
-<div class="box">
-<h2>8️⃣ Macroblocks & Motion Vectors</h2>
-
-<form action="/video/macroblocks" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required><br><br>
-
-    <button type="submit">Show Macroblocks</button>
-</form>
-</div>
-
-<!-- ------------------------ LAB 1: YUV Histogram ---------------------------- -->
-<div class="box">
-<h2>9️⃣ YUV Histogram</h2>
-
-<form action="/video/yuv-histogram" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" required><br><br>
-
-    <button type="submit">Generate Histogram</button>
-</form>
-</div>
-
-<br><br>
-
+        <footer>
+            <p>Video Processing Studio © 2024</p>
+        </footer>
+    </div>
 </body>
 </html>
